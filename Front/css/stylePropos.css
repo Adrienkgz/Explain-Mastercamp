@@ -1,0 +1,138 @@
+/*--Image de Fond et Titre--*/
+#titre { 
+  position: absolute;
+  text-align: center;
+  padding-top: 20px;
+  left: 50%;
+  top: 40%;
+  color: ghostwhite !important;
+  font-family: Newsreader;
+  font-size: 75px;
+  text-shadow: 1px 1px 8px rgba(0,0,0,0.6);
+  transform: translate(-50% ,-50%);
+} 
+
+.support-photo{
+  background-color: rgba(0, 0, 0, 0.527);
+}
+
+#background-photo{
+  width: 100%;
+  height: 75vh;
+  position: relative;
+  text-align: center;
+  background-color: black;;
+  background-size: cover;
+  background-attachment: scroll;
+  z-index: -100;
+}
+
+/*-- SECTION 1 --*/
+
+h2{
+  margin-top: 10px;
+  font-family: 'Roboto',sans-serif;
+  text-align: center;
+  font-size: 23px;
+  color: #030303;
+  padding: 20px 0px 5px 0px;
+}
+
+.small-line {
+  border:0.5px solid #212020;
+  display: block;
+  margin: auto;
+  margin-bottom: 85px;
+  width: 75px;
+}
+
+#informations {
+  padding: 90px;
+  font-family: Arial, sans-serif;
+}
+
+.explication {
+  margin-top: 50px;
+  font-family: Arial, sans-serif;
+}
+
+.full-width-paragraph {
+  width: 100%;
+}
+
+.full-width-paragraph p {
+  font-style: italic;
+  margin: 20px 90px;
+}
+
+/*-- SECTION 2 --*/
+
+#about-section {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  margin-top: 50px;
+}
+
+.about-item {
+  text-align: center;
+}
+
+.about-item h3 {
+  color: #007bff;
+  margin-bottom: 10px;
+  font-weight: bold;
+}
+
+.center-item {
+  text-align: center;
+}
+
+.center-item h3 {
+  color: #28a745;
+}
+
+.about-item:last-child {
+  text-align: center;
+}
+
+.about-item:last-child h3 {
+  color: #218838;
+}
+
+.about-item img {
+  width: 80px;
+  height: auto;
+  margin-top: 10px;
+}
+
+@media (max-width: 768px) {
+  #about-section {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .about-item {
+    width: 80%;
+  }
+
+  .about-item img {
+      width: 60px;
+      align-items: center;
+  }
+}
+
+/* Media query pour les petits écrans */
+@media (max-width: 480px) {
+  .about-item {
+      width: 100%; 
+  }
+
+  .about-item img {
+    display: none;
+  }
+
+  .about-item h3 {
+    font-size: 1.2em;
+  }
+}

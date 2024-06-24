@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Accueil</title>
+  <!--Main css (commun)-->
+  <link rel="stylesheet" type="text/css" href="../css/style.css">
+  <link rel="stylesheet" type="text/css" href="../css/styleAccueil.css">
+  <!-- Bootstrap CSS -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css">
+  <!-- Roboto Font-->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;1,700&display=swap" rel="stylesheet">
+  <!-- Font awesome-->
+  <link href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+</head>
+
+<body>
+  <header id="ACCUEIL">
+    <div class="Header-top">
+      <div class="logo">
+        <img src="../img/logo.png" class="logo" alt="logoVisage">
+      </div>
+      <div id="navba">
+        <div class="top-con">
+          <nav>
+            <button class="menu-btn" onclick="toggleMenu()">☰ Menu</button>
+            <ul>
+              <li><a class="active" href="../html/index.html">ACCUEIL</a></li>
+              <li><a href="../html/aPropos.html">A  PROPOS</a></li>
+              <li><a href="../html/faq.html">FAQ</a></li>
+              <li><a href="../html/contact.html">CONTACT</a></li>
+            </ul>
+          </nav>
+        </div>
+      </div>
+    </div>
+    <div class="support-photo">
+      <h1 id="titre">Classification CPC en<br> un seul <em>clic</em>...</h1>
+      <img src="../img/fondPageAccueil.png" id="background-photo" alt="imageDeFond">
+    </div>
+  </header>
+
+  <!--IPC-->
+  <section id="IPC">
+    <div class="s-name">
+      <h2>Entrez les informations de votre brevet</h2>
+      <span class="small-line"></span>
+      <div id="inputs">
+        <textarea type="text" id="brevet-claim" name="brevet-claim" placeholder="Claim du brevet"></textarea>
+        <textarea type="text" id="brevet-description" name="brevet-description" placeholder="Description du brevet"></textarea>
+        <button id="submit-button">Classifier</button> 
+      </div>
+    </div>
+
+    <div class="s-name" id="explication">
+      <h2>Qu’est-ce qu'un CPC ?</h2>
+      <span class="small-line"></span>
+        <div class="full-width-paragraph">
+          <p>La Classification coopérative des brevets (CPC) est une extension de la Classification internationale de brevets (CIB) et est gérée conjointement par l'OEB et l'Office des brevets et des marques des Etats-Unis. Elle est divisée en neuf sections, A-H et Y, à leur tour subdivisées en classes, sous-classes, groupes et sous-groupes. La CPC comporte environ 250 000 entrées de classification.</p>
+        </div>
+    </div>
+  </section>
+  
+  <footer>
+    <span>2024 CopyRight
+      <sup>&copy;</sup> Tous les droits réservés
+      <sub>&reg;</sub> Site officiel de PatentMind</span>
+  </footer>
+</body>
+</html>
