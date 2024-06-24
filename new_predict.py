@@ -178,9 +178,8 @@ class PatentPredicterAI:
         
     
 if __name__ == '__main__':
-    predictor = PatentPredicterAI(level = 1, filepath_model='folder_model_lvl_1/results_0_30\checkpoint-1500')
-    predictor.test(chunk = 4, nbre_prediction = 100, method = '0.8*max', use_fenetre_text = True, only_description = False)
-    
+    predictor = PatentPredicterAI(level = 0, filepath_model='folder_model_lvl_1/results_0_30\checkpoint-1500')
+    classe_predite = predictor.predict(input=text, method='0.8*avg')
 
 
 
