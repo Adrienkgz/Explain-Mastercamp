@@ -1,4 +1,4 @@
-from transformers import BertForSequenceClassification, BertTokenizerFast, TrainingArguments, T5ForConditionalGeneration, T5Tokenizer
+from transformers import BertForSequenceClassification, BertTokenizerFast, TrainingArguments, T5ForSequenceClassification, T5Tokenizer
 from sklearn.metrics import precision_recall_fscore_support
 import torch
 from data_processing import get_all_datas, get_sample_training, get_confusion_matrix
@@ -71,7 +71,7 @@ print(f"Nombre de textes original : {len(texts)}, Nombre de labels original : {l
 
 # On charge le tokenizer
 # Le tokenizer sert à transformer les textes en tokens (mots) et à "leur donner un index" pour que le modèle puisse les comprendre
-tokenizer = T5Tokenizer.from_pretrained('t5-base')
+tokenizer = T5Tokenizer.from_pretrained('pszemraj/long-t5-tglobal-base-sci-simplify-elife')
 
 # Selon le level que l'utilisateur a choisi on change le nombre de sortie du modele ( le nombre de labels que le modèle peut prédire)
 if LABEL_LEVEL == 0:
@@ -84,13 +84,13 @@ else:
 # On charge le model
 # Soit on charge le model pré-entrainé Scibert soit on peut prendre un modele qu'on a commencé à entrainé
 if USE_PRETRAINED_MODEL:
-    model = T5ForConditionalGeneration.from_pretrained('t5-base', num_labels=NBRE_LABELS)
+    model = T5ForSequenceClassification.from_pretrained('pszemraj/long-t5-tglobal-base-sci-simplify-elife', num_labels=NBRE_LABELS)
 else:
     model = BertForSequenceClassification.from_pretrained('folder_model_lvl_1/results\checkpoint-4800', num_labels=NBRE_LABELS)
     
 
 # On "tokenise" les textes, on les transforme en index que le modèle pourra comprendre
-inputs = tokenizer(texts, padding=True, truncation=True, max_length=512, return_tensors='pt')
+inputs = tokenizer(texts, padding=True, truncation=True, max_length=4096, return_tensors='pt')
 
 # Pas très important, on transforme les labels en tensor d'une librairie de deep learning pour améliorer les performances
 labels = torch.tensor(labels)
@@ -120,6 +120,8 @@ training_args = TrainingArguments(
     load_best_model_at_end=True,
     metric_for_best_model="eval_tp",
     greater_is_better=True,
+    fp16=True,  # Use mixed precision training
+    fp16_opt_level='O1',  # Use the O1 optimization level for mixed precision training
 )
 
 
