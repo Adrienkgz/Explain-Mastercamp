@@ -34,3 +34,16 @@ class CustomTrainer(Trainer):
         loss_fct = torch.nn.BCEWithLogitsLoss()
         loss = loss_fct(logits, labels)
         return (loss, outputs) if return_outputs else loss
+    
+class TextClassificationDataset(torch.utils.data.Dataset):
+    def __init__(self, encodings, labels):
+        self.encodings = encodings
+        self.labels = labels
+
+    def __getitem__(self, idx):
+        item = {key: torch.tensor(val[idx]) for key, val in self.encodings.items()}
+        item['labels'] = torch.tensor(self.labels['input_ids'][idx])
+        return item
+
+    def __len__(self):
+        return len(self.encodings['input_ids'])

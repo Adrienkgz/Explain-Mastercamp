@@ -5,7 +5,17 @@ from tqdm import tqdm
 from listes_labels import list_label_level_0, list_label_level_1
 from transformers import BertTokenizerFast
 
-def get_all_datas(file_path, label_level, begin, nbre_chunks, use_fenetre_text = False, flatten = True, transform_html_in_text = True, only_description = False):
+def get_all_datas(file_path, 
+                  label_level, 
+                  begin, 
+                  nbre_chunks, 
+                  dont_use_chunks,
+                  use_fenetre_text = False, 
+                  flatten = True, 
+                  transform_html_in_text = True, 
+                  only_description = False, 
+                  only_claim = False
+                  ):
     """ Cet fonction est un peu la fonction principale pour récupérer les données et les mettres
     dans la forme que l'on veut pour qu'on puisse après l'exploiter
 
@@ -20,7 +30,10 @@ def get_all_datas(file_path, label_level, begin, nbre_chunks, use_fenetre_text =
         outputs: une liste qui correspond à la probabilité d'appartenance à chaque label ( voir fonction get_outputs )
     """
     # On récupère la liste de chunks ( voir explication dans finetuning.py)
-    chunks = pd.read_csv(file_path, chunksize=1000, low_memory=True)
+    if dont_use_chunks:
+        chunks = pd.read_csv(file_path, low_memory=True)
+    else:
+        chunks = pd.read_csv(file_path, chunksize=1000, low_memory=True)
     
     # Sert uniquement à faire une barre de chargement parce que c'est stylé
     progress_bar = tqdm(total=nbre_chunks, desc="Processing chunks")
@@ -34,30 +47,39 @@ def get_all_datas(file_path, label_level, begin, nbre_chunks, use_fenetre_text =
     i = 0
     outputs, inputs = [], []
     list_nbre_fenetre_par_texte = None
-    for chunk in chunks:
-        # Pour chaque chunks, on récupère uniquement les colonnes qui nous intéresse
-        # On transforme le dataframe panda en tableau fixe numpy pour pouvoir le manipuler
-        util_data = chunk[['CPC', 'claim', 'description']].to_numpy()
-        
-        # On récupère les labels et les inputs avec les fonctions get_outputs et get_inputs, 
-        # que l'on a coder en bas et on les ajoutes à la suite dans les variables correspondantes
+    if dont_use_chunks:
+        util_data = chunks[['CPC', 'claim', 'description']].to_numpy()
         if use_fenetre_text:
-            input_temp, list_nbre_fenetre_par_texte = get_list_text_fenetre(util_data, flatten, transform_html_in_text, only_description=only_description)
-            inputs += input_temp
+            inputs, list_nbre_fenetre_par_texte = get_list_text_fenetre(util_data, flatten, transform_html_in_text, only_description=only_description, only_claim=only_claim)
         else:
-            inputs += get_inputs(util_data, transform_html_in_text)
+            inputs = get_inputs(util_data, transform_html_in_text, only_claim, only_description)
+        outputs = get_outputs(util_data, label_level, flatten, list_nbre_fenetre_par_texte)
+        
+    else:
+        for chunk in chunks:
+            # Pour chaque chunks, on récupère uniquement les colonnes qui nous intéresse
+            # On transforme le dataframe panda en tableau fixe numpy pour pouvoir le manipuler
+            util_data = chunk[['CPC', 'claim', 'description']].to_numpy()
             
-        outputs += get_outputs(util_data, label_level, flatten, list_nbre_fenetre_par_texte)
+            # On récupère les labels et les inputs avec les fonctions get_outputs et get_inputs, 
+            # que l'on a coder en bas et on les ajoutes à la suite dans les variables correspondantes
+            if use_fenetre_text:
+                input_temp, list_nbre_fenetre_par_texte = get_list_text_fenetre(util_data, flatten, transform_html_in_text, only_description=only_description, only_claim=only_claim)
+                inputs += input_temp
+            else:
+                inputs += get_inputs(util_data, transform_html_in_text, only_claim, only_description)
+                
+            outputs += get_outputs(util_data, label_level, flatten, list_nbre_fenetre_par_texte)
+            
+            # On met à jour la barre de chargement pour lui dire qu'on a fini un chunk
+            progress_bar.update(1)
+            
+            # On incrémente i pour savoir ou on en est dans les chunks
+            # Si on est au chunk ou il fallait s'arreter on sort de la boucle
+            i += 1
+            if i == nbre_chunks:
+                break
         
-        # On met à jour la barre de chargement pour lui dire qu'on a fini un chunk
-        progress_bar.update(1)
-        
-        # On incrémente i pour savoir ou on en est dans les chunks
-        # Si on est au chunk ou il fallait s'arreter on sort de la boucle
-        i += 1
-        if i == nbre_chunks:
-            break
-    
     # On ferme la barre de chargement
     progress_bar.close()
     
@@ -159,7 +181,7 @@ def convert_str_labels_to_list(data):
     """
     return data.replace('[', '').replace(']', '').replace(' ', '').replace("'", '').split(',')
 
-def get_inputs(datas, transform_html_in_text):
+def get_inputs(datas, transform_html_in_text, only_claim, only_description):
     """
     Get the inputs from the data.
     
@@ -173,8 +195,12 @@ def get_inputs(datas, transform_html_in_text):
     numpy.ndarray
         The inputs.
     """
-    #return ((get_text_from_html_doc(data[1]), get_text_from_html_doc(data[2])) for data in datas)
-    return [get_text_from_html_doc(data[1]) for data in datas] if transform_html_in_text else datas[:, 2]
+    if only_claim:
+        return [get_text_from_html_doc(data[1]) for data in datas] if transform_html_in_text else datas[:, 1]
+    elif only_description:
+        return [get_text_from_html_doc(data[2]) for data in datas] if transform_html_in_text else datas[:, 2]
+    else:
+        return [f"Here is a description : {get_text_from_html_doc(data[2])}. And now it's the claim : {get_text_from_html_doc(data[1])}" for data in datas] if transform_html_in_text else [f"Here is a description : {data[1]}. And now it's the claim : {data[2]}" for data in datas]
 
 def get_text_from_html_doc(html_doc):
         """
@@ -191,28 +217,30 @@ def get_text_from_html_doc(html_doc):
 
 #### Ensemble de fonctions utilisé pour le fenetrage du texte 
 
-def get_list_text_fenetre(datas, flatten, transform_html_in_text, only_description = False):
+def get_list_text_fenetre(datas, flatten, transform_html_in_text, only_description = False, only_claim = False):
     list_texts, list_nbre_fenetre_par_texte = [], []
     
     # Tokenize all the texts at once
-    descriptions = [get_text_from_html_doc(data[1]) if transform_html_in_text else data[1] for data in datas]
-    if not only_description:
-        claims = [get_text_from_html_doc(data[2]) if transform_html_in_text else data[2] for data in datas]
-        texts = [f"Here is a description : {description}. And now it's the claim : {claim}" for description, claim in zip(descriptions, claims)]
+    if only_description:
+        texts = [get_text_from_html_doc(data[2]) if transform_html_in_text else data[1] for data in datas]
+    elif only_claim:
+        texts = [get_text_from_html_doc(data[1]) if transform_html_in_text else data[2] for data in datas]
     else:
-        texts = [description for description in descriptions]
+        descriptions = [get_text_from_html_doc(data[2]) if transform_html_in_text else data[1] for data in datas]
+        claims = [get_text_from_html_doc(data[1]) if transform_html_in_text else data[2] for data in datas]
+        texts = [f"Here is a description : {description}. And now it's the claim : {claim}" for description, claim in zip(descriptions, claims)]
     texts_split = [text.split() for text in texts]
     
     for text_tokens in texts_split:
         list_text = []
         nbre_fenetre_pour_ce_texte = 0        
-        for i in range(0, len(text_tokens), 450):
+        for i in range(0, len(text_tokens), 300):
             if flatten:
-                list_texts.append(' '.join(text_tokens[i:i+490]))
+                list_texts.append(' '.join(text_tokens[i:i+400]))
             else:
-                list_text.append(' '.join(text_tokens[i:i+490]))
+                list_text.append(' '.join(text_tokens[i:i+400]))
             nbre_fenetre_pour_ce_texte += 1
-        if not flatten:        
+        if not flatten:
             list_texts.append(list_text)
         list_nbre_fenetre_par_texte.append(nbre_fenetre_pour_ce_texte)
     return list_texts, list_nbre_fenetre_par_texte
@@ -237,3 +265,17 @@ def get_sample_training(texts, labels, taille_echantillon):
     """
     lists_index_aleatoire = random.sample(range(len(texts)), taille_echantillon)
     return [texts[i] for i in lists_index_aleatoire], [labels[i] for i in lists_index_aleatoire]
+
+# Hors sujet mais fonction pour avoir un dictionnaire qui représente la matrice de confusion
+def get_confusion_matrix(self, y_true, y_pred):
+        tp, tn, fp, fn = 0, 0, 0, 0
+        for i in range(len(y_true)):
+            if y_true[i] == 1 and y_pred[i] == 1:
+                tp += 1
+            elif y_true[i] == 0 and y_pred[i] == 0:
+                tn += 1
+            elif y_true[i] == 1 and y_pred[i] == 0:
+                fn += 1
+            elif y_true[i] == 0 and y_pred[i] == 1:
+                fp += 1
+        return tp, tn, fp, fn

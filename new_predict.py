@@ -2,8 +2,7 @@ from data_processing import get_all_datas
 from transformers import BertForSequenceClassification, BertTokenizerFast, Trainer, TrainingArguments
 import torch
 from tqdm import tqdm
-
-
+from sklearn.metrics import f1_score, confusion_matrix, roc_auc_score
 
 class PatentPredicterAI:
     def __init__(self, level, filepath_model = None, use_gpu = True, batch_size = 8, verbose = True):
@@ -26,65 +25,41 @@ class PatentPredicterAI:
             print(f"Chargement du modèle sur le device : {self.device}")
         return model
     
-    def test(self, chunk, nbre_prediction = 100, use_fenetre_text = True, only_description = False, method = '3*avg'):
+    def test(self, chunk, nbre_prediction = 100, use_fenetre_text = True, only_description = False, method = '3*avg', only_claim = False):
         inputs, outputs = get_all_datas(file_path='EFREI - LIPSTIP - 50k elements EPO.csv', 
                                         label_level=self.level, 
                                         begin=chunk,
+                                        dont_use_chunks=False,
                                         nbre_chunks=1,
                                         use_fenetre_text=use_fenetre_text,
                                         only_description=only_description,
-                                        flatten=False)
+                                        flatten=False,
+                                        only_claim=only_claim)
         
         # Initialisation des métriques et compteurs
-        compteur, compteur_parfait, total_diff_len = 0, 0, 0
-        vrai_positif, faux_positif, faux_negatif = 0, 0, 0
         i = 0
+        y_true, y_pred = [], []
         for input in tqdm(inputs[:nbre_prediction], desc='Prédiction en cours'):
             # Prédiction des classes
             list_classes_prédites = self.predict(input = input, get_dictionnary_with_confidence=False, method = method) # On prédit les classes pour le texte
             
+            y_pred_temp = [1 if j in list_classes_prédites else 0 for j in range(len(outputs[i]))] # On convertis les classes prédites en liste de 0 et de 1
+            y_true_temp = [1 if j == 1 else 0 for j in outputs[i]] # On convertis les classes réelles en liste de 0 et de 1
+            
             # On convertis l'outputs en liste de classe ( outputs est une liste de probabilité d'appartenance à chaque classe soit une liste de 0 et de 1 qui par exemple s'il y'a un 1 à l'indice 3 alors la classe 3 est celle du texte et ainsi de suite)
             list_classes_reels = [j for j, value in enumerate(outputs[i]) if value == 1]
-                
-            # Compteur des métriques
-            # Compteur pour savoir si le modèle a au moins une classe en commun avec les classes réelles
-            compteur += 1 if len(set(list_classes_prédites).intersection(set(list_classes_reels))) > 0 else 0
-            
-            # Compteur pour savoir si le modèle a prédit toutes lees classes réelles
-            compteur_parfait += 1 if len(set(list_classes_prédites).intersection(set(list_classes_reels))) == len(list_classes_reels) else 0
-            
-            # Compteur pour avoir la différence de longueur entre les classes prédites et les classes réelles
-            total_diff_len += abs(len(list_classes_prédites) - len(list_classes_reels))
-            
-            # On compte le nombre de faux positifs, faux négatifs, vrai positifs
-            for classe_prédite in list_classes_prédites:
-                if classe_prédite in list_classes_reels:
-                    vrai_positif += 1
-                else:
-                    faux_positif += 1
-            
-            for classe_reelle in list_classes_reels:
-                if classe_reelle not in list_classes_prédites:
-                    faux_negatif += 1
-            # On divise le nombre de vrai positif, faux positif et faux negatif par le nombre de classes réelles pour éviter d'avoir des valeurs de F1 trop impacté plus l'input a de classes
-            vrai_positif /= len(list_classes_reels)
-            faux_positif /= len(list_classes_reels)
-            faux_negatif /= len(list_classes_reels)
             i += 1
-            
-        #On calcule les métriques
-        precision = vrai_positif / (vrai_positif + faux_positif)
-        recall = vrai_positif / (vrai_positif + faux_negatif)
-        f1 = 2 * (precision * recall) / (precision + recall)
+            y_pred.append(y_pred_temp)
+            y_true.append(y_true_temp)
+        # On calcule les métriques
+        f1_micro = f1_score(y_true, y_pred, average='micro')
+        print(f'F1 micro : {f1_micro:.5f}')
+        f1_weighted = f1_score(y_true, y_pred, average='weighted')
+        print(f'F1 weigted : {f1_weighted:.5f}')
+        exact_match_ratio = sum([1 if y_true[i] == y_pred[i] else 0 for i in range(len(y_true))])/len(y_true)
+        print(f'Exact match ratio : {exact_match_ratio:.5f}')
         
-        # On affiche les métriques
-        print(f"Précision : {precision}")
-        print(f"Rappel : {recall}")
-        print(f"F1 : {f1}")
-        print(f"Pourcentage de prédiction avec au moins une classe en commun avec les classes réelles : {compteur/nbre_prediction}")
-        print(f"Pourcentage de prédiction parfait : {compteur_parfait/nbre_prediction}")
-        print(f'total diff len moyen : {total_diff_len/nbre_prediction}')
-                
+        
     def predict(self, input, method, get_dictionnary_with_confidence = False):
         # Partie d'intialisation
         input_for_this_text = self.tokenizer(input, padding=True, truncation=True, max_length=512, return_tensors='pt') # On tokénise l'ensemble des sous blocs du texte
@@ -114,8 +89,12 @@ class PatentPredicterAI:
             liste_classes_prédites = self.transform_to_classes_probabilities_to_classes_max_fenetre(probs = list_de_prediction_du_texte_pour_chaque_fenetre, coefficient_de_sureté = float(method.split('*')[0]), get_dictionnary_with_confidence = get_dictionnary_with_confidence)
         elif 'max' in method:
             liste_classes_prédites = self.transform_to_classes_probabilities_to_classes_max(probs = list_de_prediction_du_texte_pour_chaque_fenetre, coefficient_de_sureté = float(method.split('*')[0]), get_dictionnary_with_confidence = get_dictionnary_with_confidence)
+        elif 'threshold' in method:
+            liste_classes_prédites = self.transform_to_classes_probabilities_to_classes_over_threshold(probs = list_de_prediction_du_texte_pour_chaque_fenetre, threshold = float(method.split('*')[0]), get_dictionnary_with_confidence = get_dictionnary_with_confidence)
+        elif 'thresholdfen' in method:
+            liste_classes_prédites = self.transform_to_classes_probabilities_to_classes_over_threshold_fen(probs = list_de_prediction_du_texte_pour_chaque_fenetre, threshold = float(method.split('*')[0]), get_dictionnary_with_confidence = get_dictionnary_with_confidence)
         else:
-            raise ValueError('This method is not implemented')
+            raise ValueError(f"'{method}' is not implemented")
         return liste_classes_prédites
         
     def transform_to_classes_probabilities_to_classes_avg(self, probs, coefficient_de_sureté, get_dictionnary_with_confidence):
@@ -164,6 +143,16 @@ class PatentPredicterAI:
                     list_classes_prédites_avec_coefficients_de_confiance.append(i)
         return list(set(dict_classes_prédites_avec_coefficients_de_confiance)) if get_dictionnary_with_confidence else list_classes_prédites_avec_coefficients_de_confiance
     
+    def transform_to_classes_probabilities_to_classes_over_threshold(self, probs, threshold, get_dictionnary_with_confidence):
+        for prob in probs:
+            dict_classes_prédites_avec_coefficients_de_confiance = {}
+            list_classes_prédites_avec_coefficients_de_confiance = []
+            for i in range(len(prob)):
+                if prob[i] > threshold:
+                    dict_classes_prédites_avec_coefficients_de_confiance[i] = prob[i]
+                    list_classes_prédites_avec_coefficients_de_confiance.append(i)
+        return list(set(dict_classes_prédites_avec_coefficients_de_confiance)) if get_dictionnary_with_confidence else list_classes_prédites_avec_coefficients_de_confiance
+    
     def transform_to_classes_probabilities_to_classes_over_threshold_fen(self, probs, threshold, get_dictionnary_with_confidence):
         for prob in probs:
             dict_classes_prédites_avec_coefficients_de_confiance = {}
@@ -173,13 +162,14 @@ class PatentPredicterAI:
                     dict_classes_prédites_avec_coefficients_de_confiance[i] = prob[i]
                     list_classes_prédites_avec_coefficients_de_confiance.append(i)
         return list(set(dict_classes_prédites_avec_coefficients_de_confiance)) if get_dictionnary_with_confidence else list_classes_prédites_avec_coefficients_de_confiance
-             
             
         
-    
+
 if __name__ == '__main__':
-    predictor = PatentPredicterAI(level = 0, filepath_model='folder_model_lvl_1/results_0_30\checkpoint-1500')
-    classe_predite = predictor.predict(input=text, method='0.8*avg')
+    predictor = PatentPredicterAI(level = 0, filepath_model='saved_model')
+    print('Test chunk 4')
+    predictor.test(chunk=4, nbre_prediction=1000, use_fenetre_text=True, only_description=False, method='0.8*max', only_claim=True)
+    
 
 
 
