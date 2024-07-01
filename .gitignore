@@ -1,4 +1,13 @@
 folder_model_lvl_1/
 logs/
 results/
+model lvl 0 - balanced/
 
+EFREI - LIPSTIP - 50k elements EPO balanced test.csv
+EFREI - LIPSTIP - 50k elements EPO.csv
+EFREI - LIPSTIP - 50k elements EPO balanced.csv
+EFREI - LIPSTIP - 50k elements EPO balanced train.csv
+
+# Ignorer les fichiers de modèle volumineux
+model lvl 0 - balanced/*.safetensors
+model lvl 0 - balanced/*.pt

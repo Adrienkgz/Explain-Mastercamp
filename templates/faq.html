@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Faq</title>
+  <!--Main css (commun)-->
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/styleFaq.css') }}">
+  <!-- Bootstrap CSS -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css">
+  <!-- Roboto Font-->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;1,700&display=swap"
+    rel="stylesheet">
+  <!-- Font awesome-->
+  <link href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <script src="https://code.jquery.com/jquery-1.10.2.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.0/dist/js/bootstrap.bundle.min.js"></script>
+  <!--Animation-->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+</head>
+
+<body>
+  <header id="FAQ">
+    <div class="Header-top">
+      <div class="logo">
+        <img src="../static/img/logo.png" class="logo" alt="logoVisage">
+      </div>
+      <div id="navba">
+        <div class="top-con">
+          <nav>
+            <ul>
+              <li><a href="{{ url_for('index') }}">ACCUEIL</a></li>
+              <li><a class="active" href="{{ url_for('about') }}">A PROPOS</a></li>
+              <li><a href="{{ url_for('faq') }}">FAQ</a></li>
+              <li><a href="{{ url_for('contact') }}">CONTACT</a></li>
+
+            </ul>
+          </nav>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!--Question-->
+  <section class="QUESTIONS">
+    <div class="section section_padding">
+      <div>
+        <div>
+          <!-- Section Sous-titre-->
+          <div class="animate__animated animate__slideInLeft" id="sous-titre">
+            <h3 id="titre">Quelques questions posées fréquemment</h3>
+          </div>
+        </div>
+        <div class="row justify-content-center">
+          <!-- FAQ -->
+          <div class="col-12 col-sm-10 col-lg-8">
+            <div class="faq-accordian" id="faqAccordion">
+              <div class="card fadeInUp" data-wow-delay="0.2s">
+                <div class="card-header">
+                  <h6 class="mb-0 collapsed" data-toggle="collapse" data-target="#collapseOne" aria-expanded="true"
+                    aria-controls="collapseOne">Qui êtes-vous ?<span class="lni-chevron-up"></span></h6>
+                </div>
+                <div class="collapse" id="collapseOne" data-parent="#faqAccordion">
+                  <div class="card-body">
+                    <p>Nous sommes un groupe de trois étudiants d'Efrei Paris, ayant une entreprise de préstation
+                      d'anniversaire.</p>
+                  </div>
+                </div>
+              </div>
+              <div class="card fadeInUp" data-wow-delay="0.3s">
+                <div class="card-header">
+                  <h6 class="mb-0 collapsed" data-toggle="collapse" data-target="#collapseTwo" aria-expanded="true"
+                    aria-controls="collapseTwo">Comment puis-je réserver ?<span class="lni-chevron-up"></span></h6>
+                </div>
+                <div class="collapse" id="collapseTwo" data-parent="#faqAccordion">
+                  <div class="card-body">
+                    <p>Il suffit simplement d'aller dans la rubrique "réserver".<br> Nos équipes se chargent du reste !
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div class="card fadeInUp" data-wow-delay="0.4s">
+                <div class="card-header">
+                  <h6 class="mb-0 collapsed" data-toggle="collapse" data-target="#collapseThree" aria-expanded="true"
+                    aria-controls="collapseThree">Comment peut-on vous contacter ?<span class="lni-chevron-up"></span>
+                  </h6>
+                </div>
+                <div class="collapse" id="collapseThree" data-parent="#faqAccordion">
+                  <div class="card-body">
+                    <p>Nous vous laissons nos coordonnées en bas de page. Nos correspondants sont disponibles par
+                      téléphone et sur place du lundi au vendredi de 9h à 12h et de 14h à 17h.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>2024 CopyRight
+      <sup>&copy;</sup> Tous les droits réservés
+      <sub>&reg;</sub> Site officiel de PatentMind</span>
+  </footer>
+</body>
+
+</html>
