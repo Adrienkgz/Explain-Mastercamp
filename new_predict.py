@@ -66,7 +66,8 @@ class PatentPredicterAI:
         
     def predict(self, input, method, get_dictionnary_with_confidence=False):
         # Prétraitement du texte pour enlever les balises HTML si nécessaire
-        input_cleaned = get_text_from_html_doc(input) if '<' in input and '>' in input else input
+        texte_temporaire = get_text_from_html_doc(input)
+        input_cleaned = texte_temporaire if '<' in input and '>' in input else input
         input_cleaned = input_cleaned[:510]
 
         # Tokenisation et préparation de l'input pour le modèle
@@ -108,7 +109,7 @@ class PatentPredicterAI:
         word_attributions = explainer(input_cleaned)
         sorted_attributions = sorted(word_attributions, key=lambda x: x[1], reverse=True)
 
-        return input_cleaned,predictions, sorted_attributions
+        return texte_temporaire,predictions, sorted_attributions
 
     def transform_to_classes_probabilities_to_classes_avg(self, probs, coefficient_de_sureté, get_dictionnary_with_confidence):
         avg_pred = torch.mean(probs, dim=0) # On calcule la moyenne des probabilités pour chaque classe ( on transforme la liste de probabilité pour chaque classe pour chaque fenêtre en une liste de probabilité pour chaque classe pour le texte entier)
@@ -202,7 +203,8 @@ class PatentPredicterAI:
     
     
     def full_predict(self, input):
-        input_cleaned = get_text_from_html_doc(input) if '<' in input and '>' in input else input
+        texte_temporaire = get_text_from_html_doc(input)
+        input_cleaned = texte_temporaire if '<' in input and '>' in input else input
         input_cleaned = input_cleaned[:510]
 
         input_for_this_text = self.tokenizer(input_cleaned, padding=True, truncation=True, max_length=512, return_tensors='pt')
@@ -225,7 +227,7 @@ class PatentPredicterAI:
         word_attributions = explainer(input_cleaned)
         sorted_attributions = sorted(word_attributions, key=lambda x: x[1], reverse=True)
 
-        return input_cleaned, [list_label_level_0[idx] for idx in predictions], sorted_attributions
+        return texte_temporaire, [list_label_level_0[idx] for idx in predictions], sorted_attributions
 
 
 
