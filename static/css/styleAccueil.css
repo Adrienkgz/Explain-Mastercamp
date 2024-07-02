@@ -114,3 +114,19 @@ button#submit-button:active {
   font-style: italic;
   margin: 20px 90px;
 }
+
+#word-attributions {
+  width: 100%;
+  border-collapse: collapse; 
+}
+
+#word-attributions th, #word-attributions td {
+  border: 1px solid #ddd;
+  padding: 8px;           
+  text-align: left;       
+}
+
+#word-attributions th {
+  background-color: #f2f2f2;
+  color: #333;         
+}

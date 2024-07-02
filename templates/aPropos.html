@@ -30,7 +30,10 @@
               <li><a href="{{ url_for('index') }}">ACCUEIL</a></li>
               <li><a class="active" href="{{ url_for('about') }}">A PROPOS</a></li>
               <li><a href="{{ url_for('faq') }}">FAQ</a></li>
-              <li><a href="{{ url_for('contact') }}">CONTACT</a></li>              
+              <li><a href="{{ url_for('contact') }}">CONTACT</a></li>
+              {% if current_user.is_authenticated %}
+            <li><a href="{{ url_for('logout') }}">DÉCONNEXION</a></li>
+        {% endif %}             
             </ul>
           </nav>
         </div>

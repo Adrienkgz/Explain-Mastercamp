@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/styleAccueil.css') }}">
+</head>
+<body>
+    <div class="support-photo">
+        <img src="{{ url_for('static', filename='img/fondPageAccueil.png') }}" id="background-photo" alt="Background">
+        <div id="inputs">
+            <form method="post">
+                {{ form.hidden_tag() }}
+                <h2>Register</h2>
+                <input type="text" id="username" name="username" placeholder="Nom d'utilisateur" required>
+                <input type="password" id="password" name="password" placeholder="Mot de passe" required>
+                <button type="submit" id="submit-button">S'inscrire</button>
+                <p>Déjà inscrit? <a href="{{ url_for('login') }}">Connectez-vous ici</a></p>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

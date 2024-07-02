@@ -33,7 +33,9 @@
               <li><a class="active" href="{{ url_for('about') }}">A PROPOS</a></li>
               <li><a href="{{ url_for('faq') }}">FAQ</a></li>
               <li><a href="{{ url_for('contact') }}">CONTACT</a></li>
-
+              {% if current_user.is_authenticated %}
+              <li><a href="{{ url_for('logout') }}">DÉCONNEXION</a></li>
+              {% endif %}
             </ul>
           </nav>
         </div>
@@ -50,11 +52,30 @@
     <div class="s-name">
       <h2>Entrez les informations de votre brevet</h2>
       <span class="small-line"></span>
+      <!-- Ajout d'un menu déroulant pour le type de prédiction -->
+      <select id="prediction-type">
+        <option value="quick">Prédiction Rapide</option>
+        <option value="full">Prédiction Complète</option>
+      </select>
+
       <div id="inputs">
         <textarea type="text" id="brevet-claim" name="brevet-claim" placeholder="Claim du brevet" rows="10"></textarea>
-        <textarea type="text" id="brevet-description" name="brevet-description" placeholder="Description du brevet"></textarea>
+        <textarea type="text" id="brevet-description" name="brevet-description"
+          placeholder="Description du brevet"></textarea>
         <button id="submit-button">Classifier</button>
-        <textarea type="text" id="brevet-result" name ="brevet-result" placeholde="Résultat du brevet"></textarea>
+        <textarea type="text" id="brevet-result" name="brevet-result" placeholde="Résultat du brevet"></textarea>
+        <textarea id="clean-text" style="width: 100%; height: 150px;" readonly></textarea>
+        <table id="word-attributions">
+          <thead>
+            <tr>
+              <th>Word</th>
+              <th>Score</th>
+            </tr>
+          </thead>
+          <tbody>
+          </tbody>
+        </table>
+
       </div>
     </div>
 
@@ -81,14 +102,27 @@
       $('#submit-button').click(function (e) {
         e.preventDefault(); // Prevent default form submission
         var brevetClaim = $('#brevet-claim').val();
+        var predictionType = $('#prediction-type').val(); // Récupère le type de prédiction sélectionné
+
         $.ajax({
           type: 'POST',
           url: '/classify',
           contentType: 'application/json',
-          data: JSON.stringify({ input_data: brevetClaim }), 
+          data: JSON.stringify({ input_data: brevetClaim, type: predictionType }),
           success: function (response) {
-            var resultText = 'La classe prédite est : ' + response.prediction.join(', ');
-            $('#brevet-result').val(resultText); // Mise à jour directe de la textarea pour le résultat
+            $('#clean-text').val(response.clean_text || "");  // Met à jour le texte nettoyé
+            var resultText = 'La classe prédite est : ' + (response.predictions ? response.predictions.join(', ') : '');
+            $('#brevet-result').val(resultText);
+
+            var attributionsTable = $('#word-attributions tbody');
+            attributionsTable.empty(); // Nettoie le tableau avant de le remplir
+
+            // Vérifie s'il y a des attributions à afficher
+            if (response.attributions && predictionType === "full") {
+              $.each(response.attributions, function (word, score) {
+                attributionsTable.append('<tr><td>' + word + '</td><td>' + score.toFixed(4) + '</td></tr>');
+              });
+            }
           },
           error: function (error) {
             console.log(error);
@@ -98,9 +132,10 @@
       });
     });
   </script>
-  
-  
-  
+
+
+
+
 </body>
 
 </html>
