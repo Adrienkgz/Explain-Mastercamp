@@ -13,5 +13,6 @@ class User(UserMixin):
 # Simulated database
 users = {
     'killian': {'password': 'maudet'},
-    'adrien': {'password': 'jsp'}
+    'adrien': {'password': 'jsp'},
+    'mateo': {'password': 'budel'}
 }

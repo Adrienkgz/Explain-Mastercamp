@@ -83,7 +83,7 @@ def classify():
     try:
         data = request.get_json()
         raw_text = data['input_data']
-        prediction_type = data['type']  # Retrieves the type of prediction
+        prediction_type = data['type']
 
         if prediction_type == 'quick':
             predictions = predictor.quick_predict(raw_text)

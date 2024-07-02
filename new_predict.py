@@ -67,6 +67,7 @@ class PatentPredicterAI:
     def predict(self, input, method, get_dictionnary_with_confidence=False):
         # Prétraitement du texte pour enlever les balises HTML si nécessaire
         input_cleaned = get_text_from_html_doc(input) if '<' in input and '>' in input else input
+        input_cleaned = input_cleaned[:510]
 
         # Tokenisation et préparation de l'input pour le modèle
         input_for_this_text = self.tokenizer(input_cleaned, padding=True, truncation=True, max_length=512, return_tensors='pt')
@@ -202,6 +203,7 @@ class PatentPredicterAI:
     def full_predict(self, input):
         # Nettoyer et préparer le texte
         input_cleaned = get_text_from_html_doc(input) if '<' in input and '>' in input else input
+        input_cleaned = input_cleaned[:510]  # Truncate to the first 510 characters
 
         # Tokenisation et préparation de l'input pour le modèle
         input_for_this_text = self.tokenizer(input_cleaned, padding=True, truncation=True, max_length=512, return_tensors='pt')
@@ -209,14 +211,14 @@ class PatentPredicterAI:
 
         # Calcul des logits par le modèle sur les données tokenisées
         with torch.no_grad():
-                for i in range(0, len(input_for_this_text['input_ids']), self.batch_size):
-                    batch = {
-                        'input_ids': input_for_this_text['input_ids'][i:i+self.batch_size],
-                        'attention_mask': input_for_this_text['attention_mask'][i:i+self.batch_size]
-                    }
-                    batch = {k: v.to(self.device) for k, v in batch.items()}
-                    batch_output = self.model(**batch)
-                    output_for_this_text = torch.cat((output_for_this_text, batch_output.logits.cpu()))
+            for i in range(0, len(input_for_this_text['input_ids']), self.batch_size):
+                batch = {
+                    'input_ids': input_for_this_text['input_ids'][i:i+self.batch_size],
+                    'attention_mask': input_for_this_text['attention_mask'][i:i+self.batch_size]
+                }
+                batch = {k: v.to(self.device) for k, v in batch.items()}
+                batch_output = self.model(**batch)
+                output_for_this_text = torch.cat((output_for_this_text, batch_output.logits.cpu()))
 
         # Application de la fonction sigmoïde sur les logits pour obtenir des probabilités
         probs = torch.sigmoid(output_for_this_text)
@@ -227,6 +229,7 @@ class PatentPredicterAI:
         word_attributions = explainer(input_cleaned)
 
         return input_cleaned, [list_label_level_0[idx] for idx in predictions], word_attributions
+
 
 
 
