@@ -106,8 +106,9 @@ class PatentPredicterAI:
         # Explication des contributions des mots via SequenceClassificationExplainer
         explainer = SequenceClassificationExplainer(self.model, self.tokenizer)
         word_attributions = explainer(input_cleaned)
+        sorted_attributions = sorted(word_attributions, key=lambda x: x[1], reverse=True)
 
-        return input_cleaned,predictions, word_attributions
+        return input_cleaned,predictions, sorted_attributions
 
     def transform_to_classes_probabilities_to_classes_avg(self, probs, coefficient_de_sureté, get_dictionnary_with_confidence):
         avg_pred = torch.mean(probs, dim=0) # On calcule la moyenne des probabilités pour chaque classe ( on transforme la liste de probabilité pour chaque classe pour chaque fenêtre en une liste de probabilité pour chaque classe pour le texte entier)
@@ -201,15 +202,12 @@ class PatentPredicterAI:
     
     
     def full_predict(self, input):
-        # Nettoyer et préparer le texte
         input_cleaned = get_text_from_html_doc(input) if '<' in input and '>' in input else input
-        input_cleaned = input_cleaned[:510]  # Truncate to the first 510 characters
+        input_cleaned = input_cleaned[:510]
 
-        # Tokenisation et préparation de l'input pour le modèle
         input_for_this_text = self.tokenizer(input_cleaned, padding=True, truncation=True, max_length=512, return_tensors='pt')
         output_for_this_text = torch.tensor([])
 
-        # Calcul des logits par le modèle sur les données tokenisées
         with torch.no_grad():
             for i in range(0, len(input_for_this_text['input_ids']), self.batch_size):
                 batch = {
@@ -220,15 +218,15 @@ class PatentPredicterAI:
                 batch_output = self.model(**batch)
                 output_for_this_text = torch.cat((output_for_this_text, batch_output.logits.cpu()))
 
-        # Application de la fonction sigmoïde sur les logits pour obtenir des probabilités
         probs = torch.sigmoid(output_for_this_text)
         predictions = torch.argmax(probs, dim=1).tolist()
 
-        # Utiliser SequenceClassificationExplainer pour obtenir des attributions        
         explainer = SequenceClassificationExplainer(self.model, self.tokenizer)
         word_attributions = explainer(input_cleaned)
+        sorted_attributions = sorted(word_attributions, key=lambda x: x[1], reverse=True)
 
-        return input_cleaned, [list_label_level_0[idx] for idx in predictions], word_attributions
+        return input_cleaned, [list_label_level_0[idx] for idx in predictions], sorted_attributions
+
 
 
 

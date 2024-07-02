@@ -98,7 +98,7 @@
   <script>
     $(document).ready(function () {
       $('#submit-button').click(function (e) {
-        e.preventDefault(); // Prevent default form submission
+        e.preventDefault();
         var brevetClaim = $('#brevet-claim').val();
         var predictionType = $('#prediction-type').val(); // Récupère le type de prédiction sélectionné
 
@@ -115,9 +115,15 @@
             var attributionsTable = $('#word-attributions tbody');
             attributionsTable.empty(); // Nettoie le tableau avant de le remplir
 
-            // Vérifie s'il y a des attributions à afficher
+            // Tri des attributions par score en ordre décroissant
             if (response.attributions && predictionType === "full") {
-              $.each(response.attributions, function (word, score) {
+              var sortedAttributions = Object.entries(response.attributions).sort(function (a, b) {
+                return b[1] - a[1]; // Tri basé sur le score, décroissant
+              });
+
+              sortedAttributions.forEach(function (attr) {
+                var word = attr[0];
+                var score = attr[1];
                 attributionsTable.append('<tr><td>' + word + '</td><td>' + score.toFixed(4) + '</td></tr>');
               });
             }
@@ -129,6 +135,7 @@
         });
       });
     });
+
   </script>
 
 
