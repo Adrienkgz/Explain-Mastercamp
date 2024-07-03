@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/stylelogin.css') }}">
+</head>
+<body>
+    <header id="PROPOS">
+        <div class="Header-top">
+          <div class="logo">
+            <img src="../static/img/logo.png" class="logo" alt="logoVisage">
+          </div>
+          <div id="navba">
+            <div class="top-con">
+            </div>
+          </div>
+        </div>
+    </header>
+    <div class = "corp">
+    <div class="support-photo">
+        <div id="inputs">
+            <form method="post">
+                {{ form.hidden_tag() }}
+                <h2>Register</h2>
+                <input type="text" id="username" name="username" placeholder="Nom d'utilisateur" required>
+                <input type="password" id="password" name="password" placeholder="Mot de passe" required>
+                <button type="submit" id="submit-button">S'inscrire</button>
+                <p>Déjà inscrit? <a href="{{ url_for('login') }}">Connectez-vous ici</a></p>
+            </form>
+        </div>
+    </div>
+    </div>
+</body>
+</html>

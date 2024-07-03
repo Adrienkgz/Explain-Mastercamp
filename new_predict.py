@@ -3,9 +3,13 @@ from transformers import BertForSequenceClassification, BertTokenizerFast, Train
 import torch
 from tqdm import tqdm
 from sklearn.metrics import f1_score, confusion_matrix, roc_auc_score
+import data_processing
+from listes_labels import list_label_level_0
+from transformers_interpret import SequenceClassificationExplainer
+from data_processing import get_text_from_html_doc
 
 class PatentPredicterAI:
-    def __init__(self, level, filepath_model = None, use_gpu = True, batch_size = 8, verbose = True):
+    def __init__(self, level, filepath_model = 'model lvl 0 - balanced', use_gpu = True, batch_size = 8, verbose = True):
         # Messages d'erreur
         if level not in [0, 1, 2, 3]: raise ValueError('level must be in [0, 1, 2, 3]')
         
@@ -13,7 +17,7 @@ class PatentPredicterAI:
         self.level = level # Le niveau de prédiction
         self.device = torch.device('cuda') if (use_gpu and torch.cuda.is_available()) else torch.device('cpu') # Paramètrage du device et si le modèle est chargé sur le processeur ou la carte graphique
         self.batch_size = batch_size # Taille des batchs de prédiction ( par exemple si batch_size = 8 alors lors de la prédiciton il prédira les éléments 8 par 8)
-        self.filepath_model = f'saved_model_level_{level}' if filepath_model is None else filepath_model # Chemin du modèle à charger
+        self.filepath_model = filepath_model
         self.tokenizer = BertTokenizerFast.from_pretrained('allenai/scibert_scivocab_uncased') # Tokenizer pour transformer les textes en entrée du modèle on prend celui de Scibert
         self.verbose = verbose # Paramètre pour que le programme affiche des messages lors de son exécution
         self.model = self.initialise_model() # Chargement du modèle
@@ -60,43 +64,53 @@ class PatentPredicterAI:
         print(f'Exact match ratio : {exact_match_ratio:.5f}')
         
         
-    def predict(self, input, method, get_dictionnary_with_confidence = False):
-        # Partie d'intialisation
-        input_for_this_text = self.tokenizer(input, padding=True, truncation=True, max_length=512, return_tensors='pt') # On tokénise l'ensemble des sous blocs du texte
-        output_for_this_text = torch.tensor([]) # On initialise un tuple vide pour stocker les prédictions
-        
-        # Partie où on demande au modèle de calculer les probabilités d'appartenance à chaque classe
-        for i in range(0, len(input_for_this_text['input_ids']), self.batch_size):
-            # Mise en forme du batch ( pas utile de comprendre )
-            batch = {
-                'input_ids': input_for_this_text['input_ids'][i:i+self.batch_size],
-                'attention_mask': input_for_this_text['attention_mask'][i:i+self.batch_size]
-            }
-            
-            with torch.no_grad(): # Méthode qui sert à améliorer la vitesse de calcul en disant à pytorch de ne pas garder en mémoire les gradients
-                batch = {k: v.to(self.device) for k, v in batch.items()} # On envoie le batch de la mémoire au device ( soit la carte graphique soit le processeur)
-                batch_output = self.model(**batch) # On fait passer les inputs dans le modèle pour en extraire les probabilités d'appartenance à chaque classe
-                output_for_this_text = torch.cat((output_for_this_text, batch_output.logits.cpu())) # On concatène les prédictions et on repasse les prédictions sur le processeur pour libérer la mémoire de la carte graphique
-            torch.cuda.empty_cache() # On libère la mémoire de la carte graphique pour éviter de surcharger la mémoire
-        list_de_prediction_du_texte_pour_chaque_fenetre = torch.sigmoid(output_for_this_text) # On applique une fonction sigmoide pour avoir des probabilités entre 0 et 1
-        
-        # Partie où on transforme les probabilités en classes
+    def predict(self, input, method, get_dictionnary_with_confidence=False):
+        # Prétraitement du texte pour enlever les balises HTML si nécessaire
+        texte_temporaire = get_text_from_html_doc(input)
+        input_cleaned = texte_temporaire if '<' in input and '>' in input else input
+        input_cleaned = input_cleaned[:510]
+
+        # Tokenisation et préparation de l'input pour le modèle
+        input_for_this_text = self.tokenizer(input_cleaned, padding=True, truncation=True, max_length=512, return_tensors='pt')
+        output_for_this_text = torch.tensor([])
+
+        # Calcul des logits par le modèle sur les données tokenisées
+        with torch.no_grad():
+            for i in range(0, len(input_for_this_text['input_ids']), self.batch_size):
+                batch = {
+                    'input_ids': input_for_this_text['input_ids'][i:i+self.batch_size],
+                    'attention_mask': input_for_this_text['attention_mask'][i:i+self.batch_size]
+                }
+                batch = {k: v.to(self.device) for k, v in batch.items()}
+                batch_output = self.model(**batch)
+                output_for_this_text = torch.cat((output_for_this_text, batch_output.logits.cpu()))
+
+        # Application de la fonction sigmoïde sur les logits pour obtenir des probabilités
+        probs = torch.sigmoid(output_for_this_text)
+
+        # Transformations des probabilités en classes prédites selon la méthode spécifiée
         if 'avgfen' in method:
-            liste_classes_prédites = self.transform_to_classes_probabilities_to_classes_avg_fen(probs = list_de_prediction_du_texte_pour_chaque_fenetre, coefficient_de_sureté = float(method.split('*')[0]), get_dictionnary_with_confidence = get_dictionnary_with_confidence)
+            predictions = self.transform_to_classes_probabilities_to_classes_avg_fen(probs, float(method.split('*')[0]), get_dictionnary_with_confidence)
         elif 'avg' in method:
-            liste_classes_prédites = self.transform_to_classes_probabilities_to_classes_avg(probs = list_de_prediction_du_texte_pour_chaque_fenetre, coefficient_de_sureté = float(method.split('*')[0]), get_dictionnary_with_confidence = get_dictionnary_with_confidence)
+            predictions = self.transform_to_classes_probabilities_to_classes_avg(probs, float(method.split('*')[0]), get_dictionnary_with_confidence)
         elif 'maxfen' in method:
-            liste_classes_prédites = self.transform_to_classes_probabilities_to_classes_max_fenetre(probs = list_de_prediction_du_texte_pour_chaque_fenetre, coefficient_de_sureté = float(method.split('*')[0]), get_dictionnary_with_confidence = get_dictionnary_with_confidence)
+            predictions = self.transform_to_classes_probabilities_to_classes_max_fenetre(probs, float(method.split('*')[0]), get_dictionnary_with_confidence)
         elif 'max' in method:
-            liste_classes_prédites = self.transform_to_classes_probabilities_to_classes_max(probs = list_de_prediction_du_texte_pour_chaque_fenetre, coefficient_de_sureté = float(method.split('*')[0]), get_dictionnary_with_confidence = get_dictionnary_with_confidence)
+            predictions = self.transform_to_classes_probabilities_to_classes_max(probs, float(method.split('*')[0]), get_dictionnary_with_confidence)
         elif 'threshold' in method:
-            liste_classes_prédites = self.transform_to_classes_probabilities_to_classes_over_threshold(probs = list_de_prediction_du_texte_pour_chaque_fenetre, threshold = float(method.split('*')[0]), get_dictionnary_with_confidence = get_dictionnary_with_confidence)
+            predictions = self.transform_to_classes_probabilities_to_classes_over_threshold(probs, float(method.split('*')[0]), get_dictionnary_with_confidence)
         elif 'thresholdfen' in method:
-            liste_classes_prédites = self.transform_to_classes_probabilities_to_classes_over_threshold_fen(probs = list_de_prediction_du_texte_pour_chaque_fenetre, threshold = float(method.split('*')[0]), get_dictionnary_with_confidence = get_dictionnary_with_confidence)
+            predictions = self.transform_to_classes_probabilities_to_classes_over_threshold_fen(probs, float(method.split('*')[0]), get_dictionnary_with_confidence)
         else:
             raise ValueError(f"'{method}' is not implemented")
-        return liste_classes_prédites
-        
+
+        # Explication des contributions des mots via SequenceClassificationExplainer
+        explainer = SequenceClassificationExplainer(self.model, self.tokenizer)
+        word_attributions = explainer(input_cleaned)
+        sorted_attributions = sorted(word_attributions, key=lambda x: x[1], reverse=True)
+
+        return texte_temporaire,predictions, sorted_attributions
+
     def transform_to_classes_probabilities_to_classes_avg(self, probs, coefficient_de_sureté, get_dictionnary_with_confidence):
         avg_pred = torch.mean(probs, dim=0) # On calcule la moyenne des probabilités pour chaque classe ( on transforme la liste de probabilité pour chaque classe pour chaque fenêtre en une liste de probabilité pour chaque classe pour le texte entier)
         avg_pred_value_mean = torch.mean(avg_pred) # On calcule la valeur moyenne des probabilités de la classe pour le texte entier
@@ -163,15 +177,93 @@ class PatentPredicterAI:
                     list_classes_prédites_avec_coefficients_de_confiance.append(i)
         return list(set(dict_classes_prédites_avec_coefficients_de_confiance)) if get_dictionnary_with_confidence else list_classes_prédites_avec_coefficients_de_confiance
             
-        
+    def quick_predict(self, input):
+        # Nettoyer le texte si nécessaire
+        input_cleaned = get_text_from_html_doc(input) if '<' in input and '>' in input else input
+
+        # Tokenisation et préparation de l'input pour le modèle
+        input_for_this_text = self.tokenizer(input_cleaned, padding=True, truncation=True, max_length=512, return_tensors='pt')
+        output_for_this_text = torch.tensor([])
+
+        # Calcul des logits par le modèle sur les données tokenisées
+        with torch.no_grad():
+            for i in range(0, len(input_for_this_text['input_ids']), self.batch_size):
+                batch = {
+                    'input_ids': input_for_this_text['input_ids'][i:i+self.batch_size],
+                    'attention_mask': input_for_this_text['attention_mask'][i:i+self.batch_size]
+                }
+                batch = {k: v.to(self.device) for k, v in batch.items()}
+                batch_output = self.model(**batch)
+                output_for_this_text = torch.cat((output_for_this_text, batch_output.logits.cpu()))
+
+        # Application de la fonction sigmoïde sur les logits pour obtenir des probabilités
+        probs = torch.sigmoid(output_for_this_text)
+        predictions = torch.argmax(probs, dim=1).tolist()  # Renvoie seulement l'indice de la classe la plus probable pour chaque entrée
+        return [list_label_level_0[idx] for idx in predictions]
+    
+    
+    def full_predict(self, input):
+        texte_temporaire = get_text_from_html_doc(input)
+        input_cleaned = texte_temporaire if '<' in input and '>' in input else input
+        input_cleaned = input_cleaned[:510]
+
+        input_for_this_text = self.tokenizer(input_cleaned, padding=True, truncation=True, max_length=512, return_tensors='pt')
+        output_for_this_text = torch.tensor([])
+
+        with torch.no_grad():
+            for i in range(0, len(input_for_this_text['input_ids']), self.batch_size):
+                batch = {
+                    'input_ids': input_for_this_text['input_ids'][i:i+self.batch_size],
+                    'attention_mask': input_for_this_text['attention_mask'][i:i+self.batch_size]
+                }
+                batch = {k: v.to(self.device) for k, v in batch.items()}
+                batch_output = self.model(**batch)
+                output_for_this_text = torch.cat((output_for_this_text, batch_output.logits.cpu()))
+
+        probs = torch.sigmoid(output_for_this_text)
+        predictions = torch.argmax(probs, dim=1).tolist()
+
+        explainer = SequenceClassificationExplainer(self.model, self.tokenizer)
+        word_attributions = explainer(input_cleaned)
+        sorted_attributions = sorted(word_attributions, key=lambda x: x[1], reverse=True)
+
+        return texte_temporaire, [list_label_level_0[idx] for idx in predictions], sorted_attributions
+
+
+
+
 
 if __name__ == '__main__':
-    predictor = PatentPredicterAI(level = 0, filepath_model='saved_model')
-    print('Test chunk 4')
-    predictor.test(chunk=4, nbre_prediction=1000, use_fenetre_text=True, only_description=False, method='0.8*max', only_claim=True)
-    
-
-
-
-
-
+    predictor = PatentPredicterAI(level = 0)
+    text = """< ! - -   E P O   < D
+  P   n = " 1 4 " >   - - > < c l a i
+  m   i d = " c - e n - 0 0 0 1 "   n u m =
+  " 0 0 0 1 " > < c l a i m - t e x t > A   t u r
+  b i n e   e n g i n e   a s s e m b l y   ( 1 0
+  )   c o m p r i s i n g : < c l a i m - t e x t >
+  a   t u r b o f a n   e n g i n e   ( 1 8 ) ;
+  < / c l a i m - t e x t > < c l a i m - t e x t > a n  
+  e n g i n e   c o w l i n g   ( 2 2 )   a r r a
+  n g e d   e x t e r i o r l y   t o   t h
+  e   t u r b o f a n   e n g i n e   ( 1 8 ) ;
+  < / c l a i m - t e x t > < c l a i m - t e x t > a   s
+  e t   o f   a t   l e a s t   t w
+  o   g e n e r a t o r s   ( 1 4 )   f i x e
+  d   r e l a t i v e   t o   t h e   t
+  u r b o f a n   e n g i n e   ( 1 8 ) ,   w i t
+  h i n   t h e   e n g i n e   c o w l i n
+  g   ( 2 2 ) ,   1   w h e r e i n   t
+  h e   s e t   o f   g e n e r a t o
+  r   a e r o l i n e   d i m e n s i o n s   ( 3
+  6 )   a r e   d e f i n e d   i n  
+  a   r a d i a l   d i m e n s i o n   e x t e n
+  d i n g   b e t w e e n   o u t e r m o s t   r
+  a d i a l l y   d i s t a l   p o r t i o n s  
+  o f   a   r e s p e c t i v e   g e n e r a t o
+  r   h o u s i n g . < / c l a i m - t e x t > < / c>"""
+    text_sans_html = data_processing.get_text_from_html_doc(text)
+    predictions, attributions = predictor.predict(input=text_sans_html, method='3*avg')
+    for pred in predictions:
+        print(list_label_level_0[pred])
+    for word, score in attributions:
+        print(f"{word}: {score}")

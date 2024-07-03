@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Accueil</title>
+  <!--Main css (commun)-->
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/styleAccueil.css') }}">
+  <!-- Bootstrap CSS -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css">
+  <!-- Roboto Font-->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;1,700&display=swap"
+    rel="stylesheet">
+  <!-- Font awesome-->
+  <link href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+
+</head>
+
+<body>
+  <header id="ACCUEIL">
+    <div class="Header-top">
+      <div class="logo">
+        <img src="../static/img/logo.png" class="logo" alt="logoVisage">
+      </div>
+      <div id="navba">
+        <div class="top-con">
+          <nav>
+            <button class="menu-btn" onclick="toggleMenu()">☰ Menu</button>
+            <ul>
+              <li><a href="{{ url_for('index') }}">ACCUEIL</a></li>
+              <li><a class="active" href="{{ url_for('about') }}">A PROPOS</a></li>
+              <li><a href="{{ url_for('faq') }}">FAQ</a></li>
+              <li><a href="{{ url_for('contact') }}">CONTACT</a></li>
+              {% if current_user.is_authenticated %}
+              <li><a href="{{ url_for('logout') }}">DÉCONNEXION</a></li>
+              {% endif %}
+            </ul>
+          </nav>
+        </div>
+      </div>
+    </div>
+    <div class="support-photo">
+      <h1 id="titre">Classification CPC en<br> un seul <em>clic</em>...</h1>
+      <img src="../static/img/fondPageAccueil.png" id="background-photo" alt="imageDeFond">
+    </div>
+  </header>
+
+  <!--IPC-->
+  <section id="IPC">
+    <div class="s-name">
+      <h2>Entrez les informations de votre brevet</h2>
+      <span class="small-line"></span>
+      <!-- Ajout d'un menu déroulant pour le type de prédiction -->
+      <select id="prediction-type">
+        <option value="quick">Prédiction Rapide</option>
+        <option value="full">Prédiction Complète</option>
+      </select>
+
+      <div id="inputs">
+        <textarea type="text" id="brevet-claim" name="brevet-claim" placeholder="Claim du brevet" rows="10"></textarea>
+        <button id="submit-button">Classifier</button>
+        <textarea type="text" id="brevet-result" name="brevet-result" placeholde="Résultat du brevet"></textarea>
+        <textarea id="clean-text" style="width: 100%; height: 150px;" readonly></textarea>
+        <table id="word-attributions">
+          <thead>
+            <tr>
+              <th>Word</th>
+              <th>Score</th>
+            </tr>
+          </thead>
+          <tbody>
+          </tbody>
+        </table>
+
+      </div>
+    </div>
+
+    <div class="s-name" id="explication">
+      <h2>Qu’est-ce qu'un CPC ?</h2>
+      <span class="small-line"></span>
+      <div class="full-width-paragraph">
+        <p>La Classification coopérative des brevets (CPC) est une extension de la Classification internationale de
+          brevets (CIB) et est gérée conjointement par l'OEB et l'Office des brevets et des marques des Etats-Unis. Elle
+          est divisée en neuf sections, A-H et Y, à leur tour subdivisées en classes, sous-classes, groupes et
+          sous-groupes. La CPC comporte environ 250 000 entrées de classification.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>2024 CopyRight
+      <sup>&copy;</sup> Tous les droits réservés
+      <sub>&reg;</sub> Site officiel de PatentMind</span>
+  </footer>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script>
+    $(document).ready(function () {
+      $('#submit-button').click(function (e) {
+        e.preventDefault();
+        var brevetClaim = $('#brevet-claim').val();
+        var predictionType = $('#prediction-type').val(); // Récupère le type de prédiction sélectionné
+
+        $.ajax({
+          type: 'POST',
+          url: '/classify',
+          contentType: 'application/json',
+          data: JSON.stringify({ input_data: brevetClaim, type: predictionType }),
+          success: function (response) {
+            $('#clean-text').val(response.clean_text || "");  // Met à jour le texte nettoyé
+            var resultText = 'La classe prédite est : ' + (response.predictions ? response.predictions.join(', ') : '');
+            $('#brevet-result').val(resultText);
+
+            var attributionsTable = $('#word-attributions tbody');
+            attributionsTable.empty(); // Nettoie le tableau avant de le remplir
+
+            // Tri des attributions par score en ordre décroissant
+            if (response.attributions && predictionType === "full") {
+              var sortedAttributions = Object.entries(response.attributions).sort(function (a, b) {
+                return b[1] - a[1]; // Tri basé sur le score, décroissant
+              });
+
+              sortedAttributions.forEach(function (attr) {
+                var word = attr[0];
+                var score = attr[1];
+                attributionsTable.append('<tr><td>' + word + '</td><td>' + score.toFixed(4) + '</td></tr>');
+              });
+            }
+          },
+          error: function (error) {
+            console.log(error);
+            alert('Erreur lors de la classification');
+          }
+        });
+      });
+    });
+
+  </script>
+
+
+
+
+</body>
+
+</html>

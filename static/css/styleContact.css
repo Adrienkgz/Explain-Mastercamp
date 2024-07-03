@@ -1,0 +1,166 @@
+/*--Image de Fond et Titre--*/
+#titre { 
+  position: absolute;
+  text-align: center;
+  padding-top: 20px;
+  left: 50%;
+  top: 40%;
+  color: ghostwhite !important;
+  font-family: Newsreader;
+  font-size: 75px;
+  text-shadow: 1px 1px 8px rgba(0,0,0,0.6);
+  transform: translate(-50% ,-50%);
+} 
+
+.support-photo{
+  background-color: rgba(0, 0, 0, 0.527);
+}
+
+#background-photo{
+  width: 100%;
+  height: 75vh;
+  position: relative;
+  text-align: center;
+  background-color: black;;
+  background-size: cover;
+  background-attachment: scroll;
+  z-index: -100;
+}
+
+/*-- SECTION 1 --*/
+.container {
+  padding-top: 100px;
+  width: auto;
+  height: auto;
+  margin: auto;
+  position: relative;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-color: white;
+  padding: 35px;
+}
+
+#btn {
+  width: 30%;
+  color: white;
+  font-weight: bold;
+  background-color: #6a0dad;
+  border: none;
+  border-radius: 20px;
+  padding: 10px;
+  cursor: pointer;
+  transition: background-color 0.3s, box-shadow 0.3s;
+}
+
+#btn:hover {
+  background-color: #5a00d2;
+  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.2);
+}
+
+#btn:active {
+  background-color: #4a00a8;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.form-style-1 {
+  margin: 10px auto;
+  max-width: 400px;
+  padding: 20px 12px 10px 20px;
+  font: 13px "Lucida Sans Unicode", "Lucida Grande", sans-serif;
+}
+
+.form-style-1 li {
+  padding: 0;
+  display: block;
+  list-style: none;
+  margin: 10px 0 0 0;
+}
+
+.form-style-1 label {
+  margin: 0 0 3px 0;
+  padding: 0px;
+  display: block;
+  font-weight: bold;
+}
+
+.form-style-1 input[type=text], 
+.form-style-1 input[type=date],
+.form-style-1 input[type=datetime],
+.form-style-1 input[type=number],
+.form-style-1 input[type=search],
+.form-style-1 input[type=time],
+.form-style-1 input[type=url],
+.form-style-1 input[type=email],
+textarea, 
+select {
+  box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  border: 2px solid #ddd;
+  padding: 10px;
+  margin: 0px;
+  -webkit-transition: all 0.3s ease-in-out;
+  -moz-transition: all 0.3s ease-in-out;
+  -ms-transition: all 0.3s ease-in-out;
+  -o-transition: all 0.3s ease-in-out;
+  outline: none;
+  border-radius: 10px;
+  background-color: #f9f9f9;
+  font-size: 14px;
+}
+
+.form-style-1 input[type=text]:focus, 
+.form-style-1 input[type=date]:focus,
+.form-style-1 input[type=datetime]:focus,
+.form-style-1 input[type=number]:focus,
+.form-style-1 input[type=search]:focus,
+.form-style-1 input[type=time]:focus,
+.form-style-1 input[type=url]:focus,
+.form-style-1 input[type=email]:focus,
+.form-style-1 textarea:focus, 
+.form-style-1 select:focus {
+  box-shadow: 0 0 8px #6a0dad;
+  border: 2px solid #6a0dad;
+}
+
+.form-style-1 .field-divided {
+  width: 49%;
+}
+
+.form-style-1 .field-long {
+  width: 100%;
+}
+
+.form-style-1 .field-select {
+  width: 100%;
+}
+
+.form-style-1 .field-textarea {
+  height: 100px;
+}
+
+.form-style-1 input[type=submit], .form-style-1 input[type=button] {
+  background: #6a0dad;
+  padding: 10px 20px;
+  border: none;
+  color: #fff;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background-color 0.3s, box-shadow 0.3s;
+}
+
+.form-style-1 input[type=submit]:hover, .form-style-1 input[type=button]:hover {
+  background: #5a00d2;
+  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.2);
+}
+
+.form-style-1 input[type=submit]:active, .form-style-1 input[type=button]:active {
+  background: #4a00a8;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.form-style-1 .required {
+  color: red;
+}
