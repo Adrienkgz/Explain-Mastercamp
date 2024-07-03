@@ -1,10 +1,11 @@
-from transformers import BertForSequenceClassification, BertTokenizerFast, TrainingArguments
+from transformers import BertForSequenceClassification, BertTokenizerFast, TrainingArguments, Trainer, T5ForSequenceClassification, AutoTokenizer, AutoModelForSequenceClassification, BigBirdConfig
 from sklearn.metrics import precision_recall_fscore_support
 import torch
 from data_processing import get_all_datas, get_sample_training, get_confusion_matrix
 from customclass import CustomDataset, CustomTrainer
 from transformers import EarlyStoppingCallback
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
+
 """
 Y'a des explications rapides de comment fonctionne les réseaux de neurones et comment tout marche en gros en bas + normalement tout le code est commenté sur tous les fichiers
 """
@@ -14,7 +15,7 @@ Y'a des explications rapides de comment fonctionne les réseaux de neurones et c
 1er paramètre : label_level : C'est le niveau de précision du label que l'on souhaite prédire 
 Par exemple si on a un label_level de 0 alors on prédit juste la première lettre (A, B, C, D, E, F, G, H, Y), si on a un label_level de 1, on prédit les 3 première charactère (A01, A02, ...., Y22), etc ...
 """ 
-LABEL_LEVEL = 0
+LABEL_LEVEL = 1
 
 """ 
 2e paramètre : Start : c'est l'index du premier chunk que l'on souhaite prendre
@@ -28,7 +29,7 @@ START = 0
 Par exemple, si start = 0 et NBRE_CHUNKS = 5, alors on prend les 5 premiers chunks pour l'entrainement
 """
 
-NBRE_CHUNKS = 5
+NBRE_CHUNKS = 1
 
 """ 
 4e paramètre : NBRE_EPOCHS : c'est le nombre d'epochs que l'on souhaite faire, Pour résumer, un epoch signifie que le modèle a vu tout les textes une fois
@@ -41,28 +42,28 @@ NBRE_EPOCHS = 3
 
 """
 
-BATCH_SIZE = 8
+BATCH_SIZE = 2
 
 """ 
 6e paramètre : USE_PRETRAINED_MODEL : c'est un booléen qui permet de choisir si on utilise un modèle pré-entrainé ou si on utilise un modèle qu'on a commencé à entrainer
 
 """
 
-USE_PRETRAINED_MODEL = True
+USE_PRETRAINED_MODEL = False
 
 """ 
 7e paramètre : TAILLE_ECHANTILLON : c'est la taille de l'échantillon que l'on va prendre pour l'entrainement
 Sinon, il y'a beaucoup trop de texte par chunks et le temps d'entrainement sera beaucoup trop long
 """
-TAILLE_ECHANTILLON = 6000
+TAILLE_ECHANTILLON = 10000
 
-NO_CHUNKS = True
+NO_CHUNKS = False
 
 ##########################################
 
 # On récupère les données depuis le fichier csv sous la forme de deux listes : une pour les textes et une pour les labels
-texts, labels = get_all_datas('EFREI - LIPSTIP - 50k elements EPO balanced train.csv', LABEL_LEVEL, START, NBRE_CHUNKS, NO_CHUNKS,  use_fenetre_text=False, only_claim=True)
-print(len(texts), len(labels))
+texts, labels = get_all_datas('EFREI - LIPSTIP - 50k elements EPO.csv', LABEL_LEVEL, START, NBRE_CHUNKS, NO_CHUNKS, model_preparation='bert', use_fenetre_text=False, only_claim=True)
+
 # On affiche le nombre de textes récupéré
 print(f"Nombre de textes original : {len(texts)}, Nombre de labels original : {len(labels)}")
 
@@ -71,7 +72,7 @@ print(f"Nombre de textes original : {len(texts)}, Nombre de labels original : {l
 
 # On charge le tokenizer
 # Le tokenizer sert à transformer les textes en tokens (mots) et à "leur donner un index" pour que le modèle puisse les comprendre
-tokenizer = BertTokenizerFast.from_pretrained('allenai/scibert_scivocab_uncased')
+tokenizer = AutoTokenizer.from_pretrained('allenai/scibert_scivocab_uncased_field_of_study')
 
 # Selon le level que l'utilisateur a choisi on change le nombre de sortie du modele ( le nombre de labels que le modèle peut prédire)
 if LABEL_LEVEL == 0:
@@ -84,27 +85,27 @@ else:
 # On charge le model
 # Soit on charge le model pré-entrainé Scibert soit on peut prendre un modele qu'on a commencé à entrainé
 if USE_PRETRAINED_MODEL:
-    model = BertForSequenceClassification.from_pretrained('allenai/scibert_scivocab_uncased', num_labels=NBRE_LABELS)
+    """config = BigBirdConfig.from_pretrained('google/bigbird-roberta-base')
+    config.attention_type = 'block_sparse'
+    config.chunk_size_feed_forward = 128
+    config.sequence_length = 4096  # longueur de séquence d'entrée
+    config.sliding_chunks_size = 256  # taille de fenêtre pour l'attention
+    config.num_labels = NBRE_LABELS"""
+    model = AutoModelForSequenceClassification.from_pretrained('allenai/scibert_scivocab_uncased_field_of_study', num_labels=NBRE_LABELS, ignore_mismatched_sizes=True)
 else:
-    model = BertForSequenceClassification.from_pretrained('folder_model_lvl_1/results\checkpoint-4800', num_labels=NBRE_LABELS)
+    model = BertForSequenceClassification.from_pretrained('saved_model scibert lvl 1 - balanced', num_labels=NBRE_LABELS)
     
-
-# On "tokenise" les textes, on les transforme en index que le modèle pourra comprendre
-inputs = tokenizer(texts, padding=True, truncation=True, max_length=512, return_tensors='pt')
-
-# Pas très important, on transforme les labels en tensor d'une librairie de deep learning pour améliorer les performances
-labels = torch.tensor(labels)
-
 # On calcule une variable intermédiaire
 nbre_texts = len(texts)
 
 # On crée un dataset pour l'entrainement et un dataset pour l'évaluation en utilisant la class customDataset que l'on peut retrouver dans le fichier customclass.py
-train_dataset = CustomDataset(texts[:int(0.8*nbre_texts)], labels[:int(0.8*nbre_texts)], tokenizer, max_length=512)
-eval_dataset = CustomDataset(texts[int(-0.2*nbre_texts):], labels[int(-0.2*nbre_texts):], tokenizer, max_length=512)
+train_dataset = CustomDataset(texts[:int(0.9*nbre_texts)], labels[:int(0.9*nbre_texts)], tokenizer, max_length=512)
+eval_dataset = CustomDataset(texts[int(-0.1*nbre_texts):], labels[int(-0.1*nbre_texts):], tokenizer, max_length=512)
 
 # On définit les arguments d'entrainements
 training_args = TrainingArguments(
     output_dir='./results', # Dossier où on sauvegarde le modèle pendant l'entrainement au cas ou il y'est un problème
+    overwrite_output_dir=True, # On écrase le dossier de sauvegarde si il existe
     num_train_epochs=NBRE_EPOCHS, # Nombre d'epochs
     per_device_train_batch_size=BATCH_SIZE, # Nombre de textes voit à chaque steps lorsqu'il s'entraine
     per_device_eval_batch_size=BATCH_SIZE, # Pareil qu'avant mais quand il évalue
@@ -112,14 +113,18 @@ training_args = TrainingArguments(
     weight_decay=0.001, 
     logging_dir='./logs', # Dans quel dossier on écrit les logs = les résultats de l'entrainement
     save_strategy='steps', # On sauvegarde le modèle à la fin de chaque epoch si 'epoch', à la fin de chaque batch si 'steps', jamais si 'no'
-    logging_steps=100,  # On écrit les résultats de l'entrainement tout les ... steps
-    evaluation_strategy='steps',  # Quand le modèle évalue, à la fin d'un epoch si 'epoch' , jamais si 'no', à la fin d'un batch si 'steps'
-    eval_steps=200,  # On évalue le modèle tout les ... steps
-    save_steps=200,  # On sauvegarde le modèle tout les ... steps
-    save_total_limit=5,  # On garde les n derniers modèles sauvegardés
+    logging_steps=50,  # On écrit les résultats de l'entrainement tout les ... steps
+    eval_strategy='steps',  # Quand le modèle évalue, à la fin d'un epoch si 'epoch' , jamais si 'no', à la fin d'un batch si 'steps'
+    eval_steps=500,  # On évalue le modèle tout les ... steps
+    save_steps=500,  # On sauvegarde le modèle tout les ... steps
+    save_total_limit=6,  # On garde les n derniers modèles sauvegardés
     load_best_model_at_end=True,
-    metric_for_best_model="eval_tp",
+    metric_for_best_model="eval_f1",
     greater_is_better=True,
+    fp16=True,  # On utilise le half precision pour accélérer l'entrainement
+    fp16_full_eval=True, # On utilise le half precision pour l'évaluation
+    gradient_accumulation_steps=2,
+    gradient_checkpointing=True,
 )
 
 
@@ -131,7 +136,7 @@ def compute_metrics(preds):
     # On transforme les probabilités d'appartenance à la classe en classe
     list_classes_prédits = []
     for prediction in predictions:
-        list_classes_prédits.append([1 if pred > 0.8*torch.max(prediction) else 0 for pred in prediction])
+        list_classes_prédits.append([1 if pred > 0.5 else 0 for pred in prediction])
     
     precision, recall, f1, _ = precision_recall_fscore_support(preds.label_ids, list_classes_prédits, average='micro')
     tp, tn, fp, fn = get_confusion_matrix(preds.label_ids, list_classes_prédits)
@@ -146,7 +151,7 @@ def compute_metrics(preds):
     }
     
 # On crée un callback qui va arreter l'entrainement si la loss de l'eveluation ne diminue pas pendant 3 epochs
-early_stopping_callback = EarlyStoppingCallback(early_stopping_patience=3)
+early_stopping_callback = EarlyStoppingCallback(early_stopping_patience=5)
 
 # On configure un Trainer qui est une classe issu d'une librairie qui va éviter qu'on code tout explicitement
 # En plus c'est plus efficace
@@ -163,7 +168,7 @@ trainer = CustomTrainer(
 trainer.train()
 
 # On sauvegarde
-trainer.save_model('./saved_model')
+trainer.save_model('./saved_model scibert lvl 1 - balanced')
 
 """ 
 Pour comprendre la rétropropagation et comment le modèle apprend:
